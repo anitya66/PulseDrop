@@ -1,10 +1,12 @@
 package com.pulsedrop.user.security;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,8 +32,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authorizationHeader =
                 request.getHeader("Authorization");
 
-        if (authorizationHeader == null ||
-                !authorizationHeader.startsWith("Bearer ")) {
+        // No JWT → continue normally.
+        // Spring Security will decide whether authentication is required.
+        if (authorizationHeader == null
+                || !authorizationHeader.startsWith("Bearer ")) {
 
             filterChain.doFilter(request, response);
             return;
@@ -39,25 +43,49 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authorizationHeader.substring(7);
 
-        if (jwtService.isTokenValid(token)) {
+        try {
 
-            String email = jwtService.extractEmail(token);
-            String role = jwtService.extractRole(token);
+            if (SecurityContextHolder.getContext()
+                    .getAuthentication() == null
+                    && jwtService.isTokenValid(token)) {
 
-            var authorities = List.of(
-                    new SimpleGrantedAuthority("ROLE_" + role)
-            );
+                Claims claims =
+                        jwtService.extractAllClaims(token);
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            email,
-                            null,
-                            authorities
+                String email = claims.getSubject();
+                String role = claims.get("role", String.class);
+
+                if (email != null
+                        && !email.isBlank()
+                        && role != null
+                        && !role.isBlank()) {
+
+                    var authorities = List.of(
+                            new SimpleGrantedAuthority(
+                                    "ROLE_" + role
+                            )
                     );
 
-            SecurityContextHolder
-                    .getContext()
-                    .setAuthentication(authentication);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    email,
+                                    null,
+                                    authorities
+                            );
+
+                    SecurityContextHolder
+                            .getContext()
+                            .setAuthentication(authentication);
+                }
+            }
+
+        } catch (Exception exception) {
+
+            // Invalid/malformed JWT.
+            // Do not authenticate the request.
+            // Spring Security will subsequently return 401
+            // for protected endpoints.
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
