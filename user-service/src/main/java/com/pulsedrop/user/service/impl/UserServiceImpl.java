@@ -1,5 +1,6 @@
 package com.pulsedrop.user.service.impl;
 
+import com.pulsedrop.user.dto.request.ChangePasswordRequest;
 import com.pulsedrop.user.dto.request.RegisterRequest;
 import com.pulsedrop.user.dto.request.UpdateUserRequest;
 import com.pulsedrop.user.dto.response.UserResponse;
@@ -10,7 +11,10 @@ import com.pulsedrop.user.mapper.UserMapper;
 import com.pulsedrop.user.repository.UserRepository;
 import com.pulsedrop.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +22,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponse createUser(RegisterRequest request) {
@@ -101,5 +106,36 @@ public UserResponse updateCurrentUser(
     User updatedUser = userRepository.save(user);
 
     return userMapper.toResponse(updatedUser);
+}
+
+@Override
+public void changePassword(
+        String currentEmail,
+        ChangePasswordRequest request
+) {
+
+    User user = userRepository.findByEmail(currentEmail)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "User not found"
+                    )
+            );
+
+    if (!passwordEncoder.matches(
+            request.getCurrentPassword(),
+            user.getPassword()
+    )) {
+        throw new IllegalArgumentException(
+                "Current password is incorrect"
+        );
+    }
+
+    user.setPassword(
+            passwordEncoder.encode(
+                    request.getNewPassword()
+            )
+    );
+
+    userRepository.save(user);
 }
 }

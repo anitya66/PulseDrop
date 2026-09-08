@@ -96,4 +96,17 @@ public ResponseEntity<ApiResponse<Void>> handleInvalidRequestBody(
                         )
                 );
     }
+    @ExceptionHandler(IllegalArgumentException.class)
+public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(
+        IllegalArgumentException exception
+) {
+    return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(
+                    ApiResponse.error(
+                            exception.getMessage(),
+                            null
+                    )
+            );
+}
 }

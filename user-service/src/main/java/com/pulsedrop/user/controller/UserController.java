@@ -1,6 +1,7 @@
 package com.pulsedrop.user.controller;
 
 import com.pulsedrop.user.common.ApiResponse;
+import com.pulsedrop.user.dto.request.ChangePasswordRequest;
 import com.pulsedrop.user.dto.request.UpdateUserRequest;
 import com.pulsedrop.user.dto.response.UserResponse;
 import com.pulsedrop.user.service.UserService;
@@ -89,4 +90,24 @@ public class UserController {
                 )
         );
     }
+    @PutMapping("/me/password")
+public ResponseEntity<ApiResponse<Void>> changePassword(
+        Authentication authentication,
+        @Valid @RequestBody ChangePasswordRequest request
+) {
+
+    String currentEmail = authentication.getName();
+
+    userService.changePassword(
+            currentEmail,
+            request
+    );
+
+    return ResponseEntity.ok(
+            ApiResponse.success(
+                    "Password changed successfully",
+                    null
+            )
+    );
+}
 }

@@ -1,5 +1,6 @@
 package com.pulsedrop.user.service;
 
+import com.pulsedrop.user.dto.request.ChangePasswordRequest;
 import com.pulsedrop.user.dto.request.RegisterRequest;
 import com.pulsedrop.user.dto.request.UpdateUserRequest;
 import com.pulsedrop.user.dto.response.UserResponse;
@@ -19,4 +20,9 @@ public interface UserService {
     UserResponse updateCurrentUser(
         String currentEmail,
         UpdateUserRequest request);
+
+        void changePassword(
+        String currentEmail,
+        ChangePasswordRequest request
+);
 }
