@@ -12,8 +12,10 @@ import com.pulsedrop.user.repository.UserRepository;
 import com.pulsedrop.user.security.JwtService;
 import com.pulsedrop.user.service.AuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 
 
 @Service
@@ -25,8 +27,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     
 
-    private final BCryptPasswordEncoder passwordEncoder =
-            new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponse register(RegisterRequest request) {
