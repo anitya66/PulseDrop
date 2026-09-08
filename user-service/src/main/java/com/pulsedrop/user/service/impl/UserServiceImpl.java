@@ -1,9 +1,11 @@
 package com.pulsedrop.user.service.impl;
 
 import com.pulsedrop.user.dto.request.RegisterRequest;
+import com.pulsedrop.user.dto.request.UpdateUserRequest;
 import com.pulsedrop.user.dto.response.UserResponse;
 import com.pulsedrop.user.entity.User;
 import com.pulsedrop.user.exception.ResourceNotFoundException;
+import com.pulsedrop.user.exception.UserAlreadyExistsException;
 import com.pulsedrop.user.mapper.UserMapper;
 import com.pulsedrop.user.repository.UserRepository;
 import com.pulsedrop.user.service.UserService;
@@ -70,5 +72,34 @@ public UserResponse getCurrentUser(String email) {
             );
 
     return userMapper.toResponse(user);
+}
+
+@Override
+public UserResponse updateCurrentUser(
+        String currentEmail,
+        UpdateUserRequest request
+) {
+
+    User user = userRepository.findByEmail(currentEmail)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "User not found"
+                    )
+            );
+
+    if (!currentEmail.equalsIgnoreCase(request.getEmail())
+            && userRepository.existsByEmail(request.getEmail())) {
+
+        throw new UserAlreadyExistsException(
+                "Email is already registered"
+        );
+    }
+
+    user.setName(request.getName());
+    user.setEmail(request.getEmail());
+
+    User updatedUser = userRepository.save(user);
+
+    return userMapper.toResponse(updatedUser);
 }
 }

@@ -1,16 +1,20 @@
 package com.pulsedrop.user.controller;
 
 import com.pulsedrop.user.common.ApiResponse;
+import com.pulsedrop.user.dto.request.UpdateUserRequest;
 import com.pulsedrop.user.dto.response.UserResponse;
 import com.pulsedrop.user.service.UserService;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,7 +26,6 @@ public class UserController {
 
     private final UserService userService;
 
-    // Get currently authenticated user
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(
             Authentication authentication
@@ -41,7 +44,28 @@ public class UserController {
         );
     }
 
-    // Customer-only endpoint
+    @PutMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> updateCurrentUser(
+            Authentication authentication,
+            @Valid @RequestBody UpdateUserRequest request
+    ) {
+
+        String currentEmail = authentication.getName();
+
+        UserResponse response =
+                userService.updateCurrentUser(
+                        currentEmail,
+                        request
+                );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "User profile updated successfully",
+                        response
+                )
+        );
+    }
+
     @GetMapping("/customer-test")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<ApiResponse<String>> customerTest() {
@@ -54,7 +78,6 @@ public class UserController {
         );
     }
 
-    // Driver-only endpoint
     @GetMapping("/driver-test")
     @PreAuthorize("hasRole('DRIVER')")
     public ResponseEntity<ApiResponse<String>> driverTest() {
