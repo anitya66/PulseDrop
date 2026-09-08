@@ -3,6 +3,7 @@ package com.pulsedrop.user.service.impl;
 import com.pulsedrop.user.dto.request.RegisterRequest;
 import com.pulsedrop.user.dto.response.UserResponse;
 import com.pulsedrop.user.entity.User;
+import com.pulsedrop.user.exception.ResourceNotFoundException;
 import com.pulsedrop.user.mapper.UserMapper;
 import com.pulsedrop.user.repository.UserRepository;
 import com.pulsedrop.user.service.UserService;
@@ -29,23 +30,27 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse getUserById(Long id) {
 
-        User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found with id: " + id)
-                );
+    User user = userRepository.findById(id)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "User not found with id: " + id
+                    )
+            );
 
-        return userMapper.toResponse(user);
-    }
+    return userMapper.toResponse(user);
+   }
 
     @Override
     public UserResponse getUserByEmail(String email) {
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found with email: " + email)
-                );
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "User not found with email: " + email
+                    )
+            );
 
-        return userMapper.toResponse(user);
+    return userMapper.toResponse(user);
     }
 
     @Override
