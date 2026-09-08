@@ -12,4 +12,6 @@ public interface UserService {
     UserResponse getUserByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    UserResponse getCurrentUser(String email);
 }

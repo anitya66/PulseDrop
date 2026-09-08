@@ -58,4 +58,17 @@ public class UserServiceImpl implements UserService {
 
         return userRepository.existsByEmail(email);
     }
+
+    @Override
+public UserResponse getCurrentUser(String email) {
+
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "User not found"
+                    )
+            );
+
+    return userMapper.toResponse(user);
+}
 }

@@ -1,7 +1,9 @@
 package com.pulsedrop.user.controller;
 
 import com.pulsedrop.user.common.ApiResponse;
+import com.pulsedrop.user.dto.request.LoginRequest;
 import com.pulsedrop.user.dto.request.RegisterRequest;
+import com.pulsedrop.user.dto.response.AuthResponse;
 import com.pulsedrop.user.dto.response.UserResponse;
 import com.pulsedrop.user.service.AuthService;
 import jakarta.validation.Valid;
@@ -33,4 +35,20 @@ public class AuthController {
                         )
                 );
     }
+
+    @PostMapping("/login")
+public ResponseEntity<ApiResponse<AuthResponse>> login(
+        @Valid @RequestBody LoginRequest request
+) {
+
+    AuthResponse response = authService.login(request);
+
+    return ResponseEntity
+            .ok(
+                    ApiResponse.success(
+                            "Login successful",
+                            response
+                    )
+            );
+}
 }
