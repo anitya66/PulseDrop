@@ -3,12 +3,16 @@ package com.pulsedrop.assignment.service;
 import com.pulsedrop.assignment.event.OrderCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.pulsedrop.assignment.event.DriverAssignedEvent;
+import com.pulsedrop.assignment.kafka.DriverAssignmentEventProducer;
 
 @Service
 @RequiredArgsConstructor
 public class DriverAssignmentService {
 
     private final DriverLocationService driverLocationService;
+    private final DriverAvailabilityService driverAvailabilityService;
+    private final DriverAssignmentEventProducer driverAssignmentEventProducer;
 
     public void assignDriver(OrderCreatedEvent event) {
 
@@ -38,11 +42,21 @@ public class DriverAssignmentService {
             return;
         }
 
+        Long selectedDriverId = Long.valueOf(driverId);
+
+        driverAvailabilityService.markBusy(selectedDriverId);
+
         System.out.println(
                 "Driver "
-                        + driverId
+                        + selectedDriverId
                         + " selected for order "
                         + event.getOrderId()
+        );
+
+        System.out.println(
+                "Driver "
+                        + selectedDriverId
+                        + " is now BUSY"
         );
     }
 }

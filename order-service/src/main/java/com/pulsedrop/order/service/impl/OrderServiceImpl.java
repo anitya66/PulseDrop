@@ -17,6 +17,11 @@ import com.pulsedrop.order.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.pulsedrop.order.entity.Order;
+import com.pulsedrop.order.entity.OrderStatus;
+import com.pulsedrop.order.exception.ResourceNotFoundException;
+
+import java.time.LocalDateTime;
 
 import java.util.List;
 
@@ -190,4 +195,25 @@ public class OrderServiceImpl implements OrderService {
                     false;
         };
     }
+    @Override
+public void assignDriver(Long orderId, Long driverId) {
+
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "Order not found with id: " + orderId
+                    )
+            );
+
+    order.setDriverId(driverId);
+    order.setStatus(OrderStatus.DRIVER_ASSIGNED);
+    order.setUpdatedAt(LocalDateTime.now());
+
+    orderRepository.save(order);
+
+    System.out.println(
+            "Driver " + driverId +
+            " assigned to order " + orderId
+    );
+}
 }

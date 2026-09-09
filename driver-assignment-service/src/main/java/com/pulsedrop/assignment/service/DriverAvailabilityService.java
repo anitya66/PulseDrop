@@ -25,6 +25,13 @@ public class DriverAvailabilityService {
         );
     }
 
+    public void markBusy(Long driverId) {
+    updateAvailability(
+            driverId,
+            DriverAvailability.BUSY
+    );
+}
+
     public DriverAvailability getAvailability(Long driverId) {
 
         Object value = redisTemplate.opsForHash().get(
