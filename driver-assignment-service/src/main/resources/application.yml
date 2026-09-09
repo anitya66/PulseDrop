@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: driver-assignment-service
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    consumer:
+      group-id: driver-assignment-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+server:
+  port: 8083
+
+logging:
+  level:
+    org.springframework.kafka: INFO
+    org.apache.kafka.clients.consumer: INFO
