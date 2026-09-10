@@ -1,4 +1,4 @@
-package com.pulsedrop.api_gateway;
+package com.pulsedrop.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
