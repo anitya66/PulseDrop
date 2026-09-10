@@ -31,9 +31,25 @@ public class DriverAssignmentEventProducer {
                 );
 
         kafkaTemplate.send(
-                ORDER_EVENTS_TOPIC,
-                event.getOrderId().toString(),
-                envelope
+        ORDER_EVENTS_TOPIC,
+        event.getOrderId().toString(),
+        envelope
+).whenComplete((result, exception) -> {
+
+    if (exception != null) {
+
+        System.err.println(
+                "Failed to publish DRIVER_ASSIGNED event: "
+                        + exception.getMessage()
         );
+
+    } else {
+
+        System.out.println(
+                "DRIVER_ASSIGNED event published successfully for order: "
+                        + event.getOrderId()
+        );
+    }
+});
     }
 }

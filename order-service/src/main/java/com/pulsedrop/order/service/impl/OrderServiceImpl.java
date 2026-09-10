@@ -7,6 +7,8 @@ import com.pulsedrop.order.entity.Order;
 import com.pulsedrop.order.entity.OrderStatus;
 import com.pulsedrop.order.entity.OrderStatusHistory;
 import com.pulsedrop.order.event.OrderCreatedEvent;
+import com.pulsedrop.order.event.OrderInTransitEvent;
+import com.pulsedrop.order.event.OrderPickedUpEvent;
 import com.pulsedrop.order.exception.ResourceNotFoundException;
 import com.pulsedrop.order.kafka.OrderEventProducer;
 import com.pulsedrop.order.mapper.OrderMapper;
@@ -17,9 +19,8 @@ import com.pulsedrop.order.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.pulsedrop.order.entity.Order;
-import com.pulsedrop.order.entity.OrderStatus;
-import com.pulsedrop.order.exception.ResourceNotFoundException;
+import com.pulsedrop.order.event.OrderCancelledEvent;
+import com.pulsedrop.order.event.OrderDeliveredEvent;
 
 import java.time.LocalDateTime;
 
@@ -141,10 +142,48 @@ public class OrderServiceImpl implements OrderService {
         history.setStatus(updatedOrder.getStatus());
 
         // Save status history
-        orderStatusHistoryRepository.save(history);
+orderStatusHistoryRepository.save(history);
 
-        // Return response
-        return orderMapper.toResponse(updatedOrder);
+// Publish event when order enters transit
+if (newStatus == OrderStatus.IN_TRANSIT) {
+
+    OrderInTransitEvent event =
+            new OrderInTransitEvent(
+                    updatedOrder.getId(),
+                    updatedOrder.getDriverId()
+            );
+
+    orderEventProducer.publishOrderInTransit(event);
+}
+
+// Publish event when order is delivered
+if (newStatus == OrderStatus.DELIVERED) {
+
+    OrderDeliveredEvent event =
+            new OrderDeliveredEvent(
+                    updatedOrder.getId(),
+                    updatedOrder.getDriverId()
+            );
+
+    orderEventProducer.publishOrderDelivered(event);
+}
+
+// Publish event when order is cancelled
+if (newStatus == OrderStatus.CANCELLED) {
+
+    OrderCancelledEvent event =
+            new OrderCancelledEvent(
+                    updatedOrder.getId(),
+                    updatedOrder.getCustomerId(),
+                    updatedOrder.getDriverId()
+            );
+
+    orderEventProducer.publishOrderCancelled(event);
+}
+
+// Return response
+return orderMapper.toResponse(updatedOrder);
+
     }
 
     @Override
@@ -214,6 +253,53 @@ public void assignDriver(Long orderId, Long driverId) {
     System.out.println(
             "Driver " + driverId +
             " assigned to order " + orderId
+    );
+}
+
+@Override
+@Transactional
+public void pickupOrder(Long orderId) {
+
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "Order not found with id: " + orderId
+                    )
+            );
+
+    if (order.getStatus() != OrderStatus.DRIVER_ASSIGNED) {
+        throw new IllegalStateException(
+                "Order cannot be picked up. Current status: "
+                        + order.getStatus()
+        );
+    }
+
+    // Update order status
+    order.setStatus(OrderStatus.PICKED_UP);
+    order.setUpdatedAt(LocalDateTime.now());
+
+    // Save updated order
+    orderRepository.save(order);
+
+    // Create status history
+    OrderStatusHistory history = new OrderStatusHistory();
+    history.setOrderId(order.getId());
+    history.setStatus(OrderStatus.PICKED_UP);
+
+    orderStatusHistoryRepository.save(history);
+
+    // Create Kafka event
+    OrderPickedUpEvent event =
+            new OrderPickedUpEvent(
+                    order.getId(),
+                    order.getDriverId()
+            );
+
+    // Publish ORDER_PICKED_UP event
+    orderEventProducer.publishOrderPickedUp(event);
+
+    System.out.println(
+            "Order " + orderId + " has been picked up"
     );
 }
 }

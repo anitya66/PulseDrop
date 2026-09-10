@@ -125,4 +125,17 @@ public class OrderController {
                         )
                 );
     }
+    @PutMapping("/{orderId}/pickup")
+public ResponseEntity<ApiResponse<Void>> pickupOrder(
+        @PathVariable Long orderId) {
+
+    orderService.pickupOrder(orderId);
+
+    return ResponseEntity.ok(
+            ApiResponse.success(
+                    "Order picked up successfully",
+                    null
+            )
+    );
+}
 }

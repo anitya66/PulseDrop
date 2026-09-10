@@ -16,47 +16,64 @@ public class DriverAssignmentService {
 
     public void assignDriver(OrderCreatedEvent event) {
 
+    System.out.println(
+            "Starting driver assignment for order: "
+                    + event.getOrderId()
+    );
+
+    System.out.println(
+            "Pickup location: "
+                    + event.getPickupLatitude()
+                    + ", "
+                    + event.getPickupLongitude()
+    );
+
+    String driverId = driverLocationService.findNearestDriver(
+            event.getPickupLongitude(),
+            event.getPickupLatitude(),
+            10
+    );
+
+    if (driverId == null) {
+
         System.out.println(
-                "Starting driver assignment for order: "
+                "No available driver found for order: "
                         + event.getOrderId()
         );
 
-        System.out.println(
-                "Pickup location: "
-                        + event.getPickupLatitude()
-                        + ", "
-                        + event.getPickupLongitude()
-        );
-
-        String driverId = driverLocationService.findNearestDriver(
-                event.getPickupLongitude(),
-                event.getPickupLatitude(),
-                10
-        );
-
-        if (driverId == null) {
-            System.out.println(
-                    "No available driver found for order: "
-                            + event.getOrderId()
-            );
-            return;
-        }
-
-        Long selectedDriverId = Long.valueOf(driverId);
-
-        driverAvailabilityService.markBusy(selectedDriverId);
-
-        System.out.println(
-                "Driver "
-                        + selectedDriverId
-                        + " selected for order "
-                        + event.getOrderId()
-        );
-
-        System.out.println(
-                "Driver "
-                        + selectedDriverId
-                        + " is now BUSY"
-        );
+        return;
     }
+
+    Long selectedDriverId = Long.valueOf(driverId);
+
+    driverAvailabilityService.markBusy(selectedDriverId);
+
+    System.out.println(
+            "Driver "
+                    + selectedDriverId
+                    + " selected for order "
+                    + event.getOrderId()
+    );
+
+    System.out.println(
+            "Driver "
+                    + selectedDriverId
+                    + " is now BUSY"
+    );
+
+    DriverAssignedEvent driverAssignedEvent =
+            new DriverAssignedEvent(
+                    event.getOrderId(),
+                    selectedDriverId
+            );
+
+    System.out.println(
+            "Publishing DRIVER_ASSIGNED event for order: "
+                    + event.getOrderId()
+    );
+
+    driverAssignmentEventProducer.publishDriverAssigned(
+            driverAssignedEvent
+    );
+}
 }

@@ -7,9 +7,9 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class DriverAssignedEvent {
+public class OrderCancelledEvent {
 
     private Long orderId;
-
+    private Long customerId;
     private Long driverId;
 }

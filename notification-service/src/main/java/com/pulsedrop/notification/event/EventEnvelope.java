@@ -1,4 +1,4 @@
-package com.pulsedrop.order.event;
+package com.pulsedrop.notification.event;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,10 +13,7 @@ import java.util.UUID;
 public class EventEnvelope<T> {
 
     private UUID eventId;
-
     private EventType eventType;
-
     private LocalDateTime timestamp;
-
     private T payload;
 }

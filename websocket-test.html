@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PulseDrop Notification Test</title>
+</head>
+
+<body>
+
+<h2>PulseDrop Notifications</h2>
+
+<div id="status">Connecting...</div>
+
+<ul id="notifications"></ul>
+
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+
+<script>
+
+    const client = new StompJs.Client({
+        brokerURL: "ws://localhost:8085/ws",
+
+        onConnect: function () {
+
+            document.getElementById("status").innerText =
+                "Connected to Notification Service";
+
+            client.subscribe(
+                "/topic/notifications",
+                function (message) {
+
+                    const notification =
+                        JSON.parse(message.body);
+
+                    const li =
+                        document.createElement("li");
+
+                    li.innerText =
+                        notification.type +
+                        " → " +
+                        notification.message;
+
+                    document
+                        .getElementById("notifications")
+                        .appendChild(li);
+                }
+            );
+        },
+
+        onStompError: function (frame) {
+
+            console.error(
+                "STOMP error:",
+                frame.headers["message"]
+            );
+        },
+
+        onWebSocketError: function (error) {
+
+            console.error(
+                "WebSocket error:",
+                error
+            );
+        }
+    });
+
+    client.activate();
+
+</script>
+
+</body>
+</html>

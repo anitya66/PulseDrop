@@ -27,4 +27,6 @@ public interface OrderService {
     List<OrderStatusHistoryResponse> getOrderStatusHistory(Long orderId);
 
     void assignDriver(Long orderId, Long driverId);
+
+    void pickupOrder(Long orderId);
 }
