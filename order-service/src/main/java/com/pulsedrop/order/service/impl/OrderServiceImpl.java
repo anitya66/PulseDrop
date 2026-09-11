@@ -111,88 +111,152 @@ public OrderResponse getOrderById(Long orderId, Long userId) {
                 .toList();
     }
 
-    @Override
-    @Transactional
-    public OrderResponse updateOrderStatus(
-            Long orderId,
-            OrderStatus newStatus) {
+   @Override
+@Transactional
+public OrderResponse updateOrderStatus(
+        Long orderId,
+        OrderStatus newStatus,
+        Long userId,
+        String role) {
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Order not found with id: " + orderId
-                        )
-                );
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "Order not found with id: " + orderId
+                    )
+            );
 
-        OrderStatus currentStatus = order.getStatus();
+    // Authorization check
+    if ("CUSTOMER".equals(role)) {
 
-        // Validate status transition
-        if (!isValidTransition(currentStatus, newStatus)) {
-
-            throw new IllegalArgumentException(
-                    "Invalid status transition: "
-                            + currentStatus
-                            + " → "
-                            + newStatus
+        // Customer can update only their own order
+        if (!order.getCustomerId().equals(userId)) {
+            throw new UnauthorizedAccessException(
+                    "You are not authorized to update this order"
             );
         }
 
-        // Update order status
-        order.setStatus(newStatus);
-
-        // Save updated order
-        Order updatedOrder = orderRepository.save(order);
-
-        // Create status history record
-        OrderStatusHistory history = new OrderStatusHistory();
-        history.setOrderId(updatedOrder.getId());
-        history.setStatus(updatedOrder.getStatus());
-
-        // Save status history
-orderStatusHistoryRepository.save(history);
-
-// Publish event when order enters transit
-if (newStatus == OrderStatus.IN_TRANSIT) {
-
-    OrderInTransitEvent event =
-            new OrderInTransitEvent(
-                    updatedOrder.getId(),
-                    updatedOrder.getDriverId()
+        // Customer can only cancel an order
+        if (newStatus != OrderStatus.CANCELLED) {
+            throw new UnauthorizedAccessException(
+                    "Customer can only cancel an order"
             );
+        }
 
-    orderEventProducer.publishOrderInTransit(event);
-}
+    } else if ("DRIVER".equals(role)) {
 
-// Publish event when order is delivered
-if (newStatus == OrderStatus.DELIVERED) {
+        // Driver can update only orders assigned to them
+        if (order.getDriverId() == null
+                || !order.getDriverId().equals(userId)) {
 
-    OrderDeliveredEvent event =
-            new OrderDeliveredEvent(
-                    updatedOrder.getId(),
-                    updatedOrder.getDriverId()
+            throw new UnauthorizedAccessException(
+                    "You are not authorized to update this order"
             );
+        }
 
-    orderEventProducer.publishOrderDelivered(event);
-}
+    } else {
 
-// Publish event when order is cancelled
-if (newStatus == OrderStatus.CANCELLED) {
-
-    OrderCancelledEvent event =
-            new OrderCancelledEvent(
-                    updatedOrder.getId(),
-                    updatedOrder.getCustomerId(),
-                    updatedOrder.getDriverId()
-            );
-
-    orderEventProducer.publishOrderCancelled(event);
-}
-
-// Return response
-return orderMapper.toResponse(updatedOrder);
-
+        throw new UnauthorizedAccessException(
+                "Invalid role for order status update"
+        );
     }
 
+    OrderStatus currentStatus = order.getStatus();
+
+    // Validate status transition
+    if (!isValidTransition(currentStatus, newStatus)) {
+
+        throw new IllegalArgumentException(
+                "Invalid status transition: "
+                        + currentStatus
+                        + " → "
+                        + newStatus
+        );
+    }
+
+    // Update order status
+    order.setStatus(newStatus);
+
+    // Save updated order
+    Order updatedOrder = orderRepository.save(order);
+
+    // Create status history record
+    OrderStatusHistory history = new OrderStatusHistory();
+
+    history.setOrderId(updatedOrder.getId());
+    history.setStatus(updatedOrder.getStatus());
+
+    orderStatusHistoryRepository.save(history);
+
+    // Publish event when order enters transit
+    if (newStatus == OrderStatus.IN_TRANSIT) {
+
+        OrderInTransitEvent event =
+                new OrderInTransitEvent(
+                        updatedOrder.getId(),
+                        updatedOrder.getDriverId()
+                );
+
+        orderEventProducer.publishOrderInTransit(event);
+    }
+
+    // Publish event when order is delivered
+    if (newStatus == OrderStatus.DELIVERED) {
+
+        OrderDeliveredEvent event =
+                new OrderDeliveredEvent(
+                        updatedOrder.getId(),
+                        updatedOrder.getDriverId()
+                );
+
+        orderEventProducer.publishOrderDelivered(event);
+    }
+
+    // Publish event when order is cancelled
+    if (newStatus == OrderStatus.CANCELLED) {
+
+        OrderCancelledEvent event =
+                new OrderCancelledEvent(
+                        updatedOrder.getId(),
+                        updatedOrder.getCustomerId(),
+                        updatedOrder.getDriverId()
+                );
+
+        orderEventProducer.publishOrderCancelled(event);
+    }
+
+    // Return response
+    return orderMapper.toResponse(updatedOrder);
+}
+
+
+/**
+ * Validates the allowed order status transitions.
+ */
+private boolean isValidTransition(
+        OrderStatus currentStatus,
+        OrderStatus newStatus) {
+
+    return switch (currentStatus) {
+
+        case PENDING ->
+                newStatus == OrderStatus.DRIVER_ASSIGNED
+                        || newStatus == OrderStatus.CANCELLED;
+
+        case DRIVER_ASSIGNED ->
+                newStatus == OrderStatus.PICKED_UP
+                        || newStatus == OrderStatus.CANCELLED;
+
+        case PICKED_UP ->
+                newStatus == OrderStatus.IN_TRANSIT;
+
+        case IN_TRANSIT ->
+                newStatus == OrderStatus.DELIVERED;
+
+        case DELIVERED, CANCELLED ->
+                false;
+    };
+}
     @Override
 @Transactional(readOnly = true)
 public List<OrderStatusHistoryResponse> getOrderStatusHistory(
@@ -245,7 +309,10 @@ public void assignDriver(Long orderId, Long driverId) {
 
 @Override
 @Transactional
-public void pickupOrder(Long orderId) {
+public void pickupOrder(
+        Long orderId,
+        Long userId,
+        String role) {
 
     Order order = orderRepository.findById(orderId)
             .orElseThrow(() ->
@@ -254,6 +321,23 @@ public void pickupOrder(Long orderId) {
                     )
             );
 
+    // Only DRIVER can pick up an order
+    if (!"DRIVER".equals(role)) {
+        throw new UnauthorizedAccessException(
+                "Only the assigned driver can pick up this order"
+        );
+    }
+
+    // Verify that this driver is assigned to this order
+    if (order.getDriverId() == null
+            || !order.getDriverId().equals(userId)) {
+
+        throw new UnauthorizedAccessException(
+                "You are not authorized to pick up this order"
+        );
+    }
+
+    // Verify current status
     if (order.getStatus() != OrderStatus.DRIVER_ASSIGNED) {
         throw new IllegalStateException(
                 "Order cannot be picked up. Current status: "

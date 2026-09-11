@@ -20,9 +20,11 @@ public interface OrderService {
     List<OrderResponse> getMyOrders(Long customerId);
 
     OrderResponse updateOrderStatus(
-            Long orderId,
-            OrderStatus newStatus
-    );
+        Long orderId,
+        OrderStatus newStatus,
+        Long userId,
+        String role
+);
 
     List<OrderStatusHistoryResponse> getOrderStatusHistory(
         Long orderId,
@@ -30,5 +32,9 @@ public interface OrderService {
 
     void assignDriver(Long orderId, Long driverId);
 
-    void pickupOrder(Long orderId);
+    void pickupOrder(
+        Long orderId,
+        Long userId,
+        String role
+);
 }

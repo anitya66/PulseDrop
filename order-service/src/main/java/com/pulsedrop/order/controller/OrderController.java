@@ -77,26 +77,30 @@ public ResponseEntity<ApiResponse<OrderResponse>> getOrderById(
 }
 
     // Update Order Status
-    @PatchMapping("/{orderId:\\d+}/status")
-    public ResponseEntity<ApiResponse<OrderResponse>> updateOrderStatus(
-            @PathVariable Long orderId,
-            @RequestBody @Valid UpdateOrderStatusRequest request) {
+   @PatchMapping("/{orderId:\\d+}/status")
+public ResponseEntity<ApiResponse<OrderResponse>> updateOrderStatus(
+        @PathVariable Long orderId,
+        @RequestHeader("X-User-Id") Long userId,
+        @RequestHeader("X-User-Role") String role,
+        @RequestBody @Valid UpdateOrderStatusRequest request) {
 
-        OrderResponse response =
-                orderService.updateOrderStatus(
-                        orderId,
-                        request.getStatus()
-                );
+    OrderResponse response =
+            orderService.updateOrderStatus(
+                    orderId,
+                    request.getStatus(),
+                    userId,
+                    role
+            );
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(
-                        ApiResponse.success(
-                                "Order status updated successfully",
-                                response
-                        )
-                );
-    }
+    return ResponseEntity
+            .status(HttpStatus.OK)
+            .body(
+                    ApiResponse.success(
+                            "Order status updated successfully",
+                            response
+                    )
+            );
+}
 
     // Get Order Status History
    @GetMapping("/{orderId:\\d+}/history")
@@ -117,11 +121,17 @@ public ResponseEntity<ApiResponse<List<OrderStatusHistoryResponse>>> getOrderSta
             );
 }
 
-    @PutMapping("/{orderId}/pickup")
-    public ResponseEntity<ApiResponse<Void>> pickupOrder(
-        @PathVariable Long orderId) {
+   @PutMapping("/{orderId}/pickup")
+public ResponseEntity<ApiResponse<Void>> pickupOrder(
+        @PathVariable Long orderId,
+        @RequestHeader("X-User-Id") Long userId,
+        @RequestHeader("X-User-Role") String role) {
 
-    orderService.pickupOrder(orderId);
+    orderService.pickupOrder(
+            orderId,
+            userId,
+            role
+    );
 
     return ResponseEntity.ok(
             ApiResponse.success(
