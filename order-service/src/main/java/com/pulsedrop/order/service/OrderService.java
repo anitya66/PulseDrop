@@ -15,7 +15,7 @@ public interface OrderService {
             CreateOrderRequest request
     );
 
-    OrderResponse getOrderById(Long orderId);
+    OrderResponse getOrderById(Long orderId, Long userId);
 
     List<OrderResponse> getMyOrders(Long customerId);
 
@@ -24,7 +24,9 @@ public interface OrderService {
             OrderStatus newStatus
     );
 
-    List<OrderStatusHistoryResponse> getOrderStatusHistory(Long orderId);
+    List<OrderStatusHistoryResponse> getOrderStatusHistory(
+        Long orderId,
+        Long userId);
 
     void assignDriver(Long orderId, Long driverId);
 

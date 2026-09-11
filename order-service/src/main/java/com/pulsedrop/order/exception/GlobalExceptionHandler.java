@@ -85,4 +85,18 @@ public class GlobalExceptionHandler {
                         )
                 );
     }
+
+    @ExceptionHandler(UnauthorizedAccessException.class)
+public ResponseEntity<ApiResponse<Void>> handleUnauthorizedAccess(
+        UnauthorizedAccessException exception) {
+
+    return ResponseEntity
+            .status(HttpStatus.FORBIDDEN)
+            .body(
+                    ApiResponse.error(
+                            exception.getMessage(),
+                            null
+                    )
+            );
+}
 }

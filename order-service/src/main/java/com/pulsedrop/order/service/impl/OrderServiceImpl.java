@@ -10,6 +10,7 @@ import com.pulsedrop.order.event.OrderCreatedEvent;
 import com.pulsedrop.order.event.OrderInTransitEvent;
 import com.pulsedrop.order.event.OrderPickedUpEvent;
 import com.pulsedrop.order.exception.ResourceNotFoundException;
+import com.pulsedrop.order.exception.UnauthorizedAccessException;
 import com.pulsedrop.order.kafka.OrderEventProducer;
 import com.pulsedrop.order.mapper.OrderMapper;
 import com.pulsedrop.order.mapper.OrderStatusHistoryMapper;
@@ -78,19 +79,25 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toResponse(savedOrder);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public OrderResponse getOrderById(Long orderId) {
+   @Override
+@Transactional(readOnly = true)
+public OrderResponse getOrderById(Long orderId, Long userId) {
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Order not found with id: " + orderId
-                        )
-                );
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "Order not found with id: " + orderId
+                    )
+            );
 
-        return orderMapper.toResponse(order);
-    }
+    if (!order.getCustomerId().equals(userId)) {
+    throw new UnauthorizedAccessException(
+            "You are not authorized to access this order"
+    );
+}
+
+    return orderMapper.toResponse(order);
+}
 
     @Override
     @Transactional(readOnly = true)
@@ -187,53 +194,33 @@ return orderMapper.toResponse(updatedOrder);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<OrderStatusHistoryResponse> getOrderStatusHistory(
-            Long orderId) {
+@Transactional(readOnly = true)
+public List<OrderStatusHistoryResponse> getOrderStatusHistory(
+        Long orderId,
+        Long userId) {
 
-        // Check whether order exists
-        if (!orderRepository.existsById(orderId)) {
-
-            throw new ResourceNotFoundException(
-                    "Order not found with id: " + orderId
+    // Check whether order exists
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "Order not found with id: " + orderId
+                    )
             );
-        }
 
-        // Fetch history in chronological order
-        return orderStatusHistoryRepository
-                .findByOrderIdOrderByChangedAtAsc(orderId)
-                .stream()
-                .map(orderStatusHistoryMapper::toResponse)
-                .toList();
+    // Check whether the order belongs to the authenticated user
+    if (!order.getCustomerId().equals(userId)) {
+        throw new UnauthorizedAccessException(
+                "You are not authorized to access this order"
+        );
     }
 
-    /**
-     * Validates the allowed order status transitions.
-     */
-    private boolean isValidTransition(
-            OrderStatus currentStatus,
-            OrderStatus newStatus) {
-
-        return switch (currentStatus) {
-
-            case PENDING ->
-                    newStatus == OrderStatus.DRIVER_ASSIGNED
-                            || newStatus == OrderStatus.CANCELLED;
-
-            case DRIVER_ASSIGNED ->
-                    newStatus == OrderStatus.PICKED_UP
-                            || newStatus == OrderStatus.CANCELLED;
-
-            case PICKED_UP ->
-                    newStatus == OrderStatus.IN_TRANSIT;
-
-            case IN_TRANSIT ->
-                    newStatus == OrderStatus.DELIVERED;
-
-            case DELIVERED, CANCELLED ->
-                    false;
-        };
-    }
+    // Fetch history in chronological order
+    return orderStatusHistoryRepository
+            .findByOrderIdOrderByChangedAtAsc(orderId)
+            .stream()
+            .map(orderStatusHistoryMapper::toResponse)
+            .toList();
+}
     @Override
 public void assignDriver(Long orderId, Long driverId) {
 
