@@ -20,46 +20,58 @@ public class DriverLocationController {
     private final DriverLocationService driverLocationService;
 
     @PostMapping("/{driverId}")
-public ResponseEntity<Void> updateDriverLocation(
-        @PathVariable Long driverId,
-        @Valid @RequestBody DriverLocationRequest request) {
+    public ResponseEntity<Void> updateDriverLocation(
+            @PathVariable Long driverId,
+            @RequestHeader("X-User-Id") Long authenticatedUserId,
+            @RequestHeader("X-User-Role") String role,
+            @Valid @RequestBody DriverLocationRequest request) {
 
-    driverLocationService.updateDriverLocation(
-            driverId,
-            request.getLongitude(),
-            request.getLatitude()
-    );
+        // Only drivers can update driver locations
+        if (!"DRIVER".equals(role)) {
+            return ResponseEntity.status(403).build();
+        }
 
-    return ResponseEntity.ok().build();
-}
+        // Driver can update only their own location
+        if (!driverId.equals(authenticatedUserId)) {
+            return ResponseEntity.status(403).build();
+        }
 
-@GetMapping("/{driverId}")
-public ResponseEntity<DriverLocationResponse> getDriverLocation(
-        @PathVariable Long driverId) {
+        driverLocationService.updateDriverLocation(
+                driverId,
+                request.getLongitude(),
+                request.getLatitude()
+        );
 
-    DriverLocationResponse location =
-            driverLocationService.getDriverLocation(driverId);
-
-    if (location == null) {
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.ok().build();
     }
 
-    return ResponseEntity.ok(location);
-}
+    @GetMapping("/{driverId}")
+    public ResponseEntity<DriverLocationResponse> getDriverLocation(
+            @PathVariable Long driverId) {
 
-@GetMapping("/nearby")
-public ResponseEntity<List<String>> findNearbyDrivers(
-        @RequestParam double longitude,
-        @RequestParam double latitude,
-        @RequestParam(defaultValue = "10") double radiusInKm) {
+        DriverLocationResponse location =
+                driverLocationService.getDriverLocation(driverId);
 
-    List<String> drivers =
-            driverLocationService.findNearbyDrivers(
-                    longitude,
-                    latitude,
-                    radiusInKm
-            );
+        if (location == null) {
+            return ResponseEntity.notFound().build();
+        }
 
-    return ResponseEntity.ok(drivers);
-}
+        return ResponseEntity.ok(location);
+    }
+
+    @GetMapping("/nearby")
+    public ResponseEntity<List<String>> findNearbyDrivers(
+            @RequestParam double longitude,
+            @RequestParam double latitude,
+            @RequestParam(defaultValue = "10") double radiusInKm) {
+
+        List<String> drivers =
+                driverLocationService.findNearbyDrivers(
+                        longitude,
+                        latitude,
+                        radiusInKm
+                );
+
+        return ResponseEntity.ok(drivers);
+    }
 }
