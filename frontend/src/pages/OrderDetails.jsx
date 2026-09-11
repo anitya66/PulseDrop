@@ -1,36 +1,47 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
+  confirmPickup,
   getOrderById,
   getOrderHistory,
   updateOrderStatus,
 } from "../services/orderService";
+import { useAuth } from "../context/AuthContext";
 
 function OrderDetails() {
   const { orderId } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [order, setOrder] = useState(null);
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isPerformingAction, setIsPerformingAction] = useState(false);
+
   const [error, setError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+
+  const isDriver = user?.role === "DRIVER";
 
   const loadOrder = async () => {
     try {
       setIsLoading(true);
       setError("");
 
-      const [orderResult, historyResult] = await Promise.all([
-        getOrderById(orderId),
-        getOrderHistory(orderId),
-      ]);
-
-      console.log("Order details:", orderResult);
-      console.log("Order history:", historyResult);
+      const orderResult = await getOrderById(orderId);
 
       setOrder(orderResult.data);
-      setHistory(historyResult.data || []);
+
+      // History is currently customer-authorized on the backend.
+      // Only load it for customers.
+      if (user?.role === "CUSTOMER") {
+        const historyResult = await getOrderHistory(orderId);
+        setHistory(historyResult.data || []);
+      } else {
+        setHistory([]);
+      }
     } catch (error) {
       console.error("Failed to load order:", error);
 
@@ -45,7 +56,18 @@ function OrderDetails() {
 
   useEffect(() => {
     loadOrder();
-  }, [orderId]);
+  }, [orderId, user?.role]);
+
+  const refreshOrder = async () => {
+    const orderResult = await getOrderById(orderId);
+
+    setOrder(orderResult.data);
+
+    if (user?.role === "CUSTOMER") {
+      const historyResult = await getOrderHistory(orderId);
+      setHistory(historyResult.data || []);
+    }
+  };
 
   const handleCancelOrder = async () => {
     const confirmed = window.confirm(
@@ -61,20 +83,11 @@ function OrderDetails() {
       setError("");
       setActionMessage("");
 
-      const result = await updateOrderStatus(orderId, "CANCELLED");
-
-      console.log("Order cancelled:", result);
+      await updateOrderStatus(orderId, "CANCELLED");
 
       setActionMessage("Delivery cancelled successfully.");
 
-      // Refresh order details and timeline
-      const [orderResult, historyResult] = await Promise.all([
-        getOrderById(orderId),
-        getOrderHistory(orderId),
-      ]);
-
-      setOrder(orderResult.data);
-      setHistory(historyResult.data || []);
+      await refreshOrder();
     } catch (error) {
       console.error("Failed to cancel order:", error);
 
@@ -84,6 +97,64 @@ function OrderDetails() {
       );
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleDriverAction = async () => {
+    try {
+      setIsPerformingAction(true);
+      setError("");
+      setActionMessage("");
+
+      if (order.status === "DRIVER_ASSIGNED") {
+        await confirmPickup(orderId);
+
+        setActionMessage(
+          "Order picked up successfully."
+        );
+      } else if (order.status === "PICKED_UP") {
+        await updateOrderStatus(orderId, "IN_TRANSIT");
+
+        setActionMessage(
+          "Delivery is now in transit."
+        );
+      } else if (order.status === "IN_TRANSIT") {
+        await updateOrderStatus(orderId, "DELIVERED");
+
+        setActionMessage(
+          "Delivery marked as completed."
+        );
+      }
+
+      await refreshOrder();
+    } catch (error) {
+      console.error(
+        "Failed to perform driver action:",
+        error
+      );
+
+      setError(
+        error.response?.data?.message ||
+          "Failed to update the delivery."
+      );
+    } finally {
+      setIsPerformingAction(false);
+    }
+  };
+
+  const getDriverActionLabel = () => {
+    switch (order?.status) {
+      case "DRIVER_ASSIGNED":
+        return "Pick Up Order";
+
+      case "PICKED_UP":
+        return "Start Transit";
+
+      case "IN_TRANSIT":
+        return "Mark Delivered";
+
+      default:
+        return "";
     }
   };
 
@@ -153,7 +224,7 @@ function OrderDetails() {
       <div className="min-h-[calc(100vh-4rem)] bg-slate-950 px-6 py-10">
         <div className="mx-auto max-w-5xl">
           <Link
-            to="/customer/dashboard"
+            to={isDriver ? "/driver/dashboard" : "/customer/dashboard"}
             className="text-sm text-slate-400 transition hover:text-white"
           >
             ← Back to deliveries
@@ -173,13 +244,15 @@ function OrderDetails() {
     return null;
   }
 
+  const driverActionLabel = getDriverActionLabel();
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-950 px-6 py-10">
       <div className="mx-auto max-w-5xl">
 
         {/* Back */}
         <Link
-          to="/customer/dashboard"
+          to={isDriver ? "/driver/dashboard" : "/customer/dashboard"}
           className="text-sm text-slate-400 transition hover:text-white"
         >
           ← Back to deliveries
@@ -224,6 +297,52 @@ function OrderDetails() {
             <p className="text-sm text-red-300">
               {error}
             </p>
+          </div>
+        )}
+
+        {/* Driver Actions */}
+        {isDriver && driverActionLabel && (
+          <div className="mt-6 rounded-3xl border border-blue-400/20 bg-blue-400/[0.05] p-6 sm:p-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-blue-300/70">
+                  Driver action
+                </p>
+
+                <h2 className="mt-2 text-xl font-semibold text-white">
+                  {order.status === "DRIVER_ASSIGNED" &&
+                    "Ready for pickup"}
+
+                  {order.status === "PICKED_UP" &&
+                    "Package picked up"}
+
+                  {order.status === "IN_TRANSIT" &&
+                    "Delivery in progress"}
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  {order.status === "DRIVER_ASSIGNED" &&
+                    "Confirm that you have collected the package from the pickup location."}
+
+                  {order.status === "PICKED_UP" &&
+                    "Start the delivery journey when you are on the way to the destination."}
+
+                  {order.status === "IN_TRANSIT" &&
+                    "Confirm once the package has been successfully delivered."}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDriverAction}
+                disabled={isPerformingAction}
+                className="shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isPerformingAction
+                  ? "Updating..."
+                  : driverActionLabel}
+              </button>
+            </div>
           </div>
         )}
 
@@ -311,8 +430,8 @@ function OrderDetails() {
           </div>
         </div>
 
-        {/* Cancel Delivery */}
-        {order.status === "PENDING" && (
+        {/* Cancel Delivery - Customer only */}
+        {!isDriver && order.status === "PENDING" && (
           <div className="mt-4 rounded-2xl border border-red-400/10 bg-red-400/[0.03] p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -339,73 +458,71 @@ function OrderDetails() {
           </div>
         )}
 
-        {/* Order Timeline */}
-        <section className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] p-6 sm:p-8">
-          <div className="mb-7">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              Order Activity
-            </p>
+        {/* Order Timeline - Customer only */}
+        {!isDriver && (
+          <section className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] p-6 sm:p-8">
+            <div className="mb-7">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                Order Activity
+              </p>
 
-            <h2 className="mt-2 text-xl font-semibold text-white">
-              Delivery Timeline
-            </h2>
+              <h2 className="mt-2 text-xl font-semibold text-white">
+                Delivery Timeline
+              </h2>
 
-            <p className="mt-1 text-sm text-slate-400">
-              Track how your order has progressed.
-            </p>
-          </div>
-
-          {history.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-sm text-slate-400">
-                No order activity available yet.
+              <p className="mt-1 text-sm text-slate-400">
+                Track how your order has progressed.
               </p>
             </div>
-          ) : (
-            <div className="space-y-6">
-              {history.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="relative flex gap-4"
-                >
-                  {/* Timeline line */}
-                  {index < history.length - 1 && (
-                    <div className="absolute left-[7px] top-4 h-full w-px bg-white/10" />
-                  )}
 
-                  {/* Timeline dot */}
-                  <div className="relative z-10 mt-1 h-4 w-4 shrink-0 rounded-full border-4 border-slate-950 bg-white" />
+            {history.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                <p className="text-sm text-slate-400">
+                  No order activity available yet.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {history.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="relative flex gap-4"
+                  >
+                    {index < history.length - 1 && (
+                      <div className="absolute left-[7px] top-4 h-full w-px bg-white/10" />
+                    )}
 
-                  {/* Timeline content */}
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span
-                        className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusClasses(
-                          item.status
-                        )}`}
-                      >
-                        {formatStatus(item.status)}
-                      </span>
+                    <div className="relative z-10 mt-1 h-4 w-4 shrink-0 rounded-full border-4 border-slate-950 bg-white" />
 
-                      <p className="text-xs text-slate-500">
-                        {formatDate(item.changedAt)}
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span
+                          className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusClasses(
+                            item.status
+                          )}`}
+                        >
+                          {formatStatus(item.status)}
+                        </span>
+
+                        <p className="text-xs text-slate-500">
+                          {formatDate(item.changedAt)}
+                        </p>
+                      </div>
+
+                      <p className="mt-3 text-sm text-slate-400">
+                        Order status changed to{" "}
+                        <span className="font-medium text-slate-300">
+                          {formatStatus(item.status)}
+                        </span>
+                        .
                       </p>
                     </div>
-
-                    <p className="mt-3 text-sm text-slate-400">
-                      Order status changed to{" "}
-                      <span className="font-medium text-slate-300">
-                        {formatStatus(item.status)}
-                      </span>
-                      .
-                    </p>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </div>
   );
