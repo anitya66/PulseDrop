@@ -65,4 +65,13 @@ public class DriverController {
                 "Driver availability updated successfully"
         );
     }
+    @GetMapping("/{driverId}/availability")
+public ResponseEntity<DriverAvailability> getDriverAvailability(
+        @PathVariable Long driverId) {
+
+    DriverAvailability availability =
+            driverAvailabilityService.getAvailability(driverId);
+
+    return ResponseEntity.ok(availability);
+}
 }

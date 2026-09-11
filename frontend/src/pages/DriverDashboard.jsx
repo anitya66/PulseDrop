@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { updateDriverAvailability } from "../services/driverService";
 import { getDriverOrders } from "../services/orderService";
-import { updateDriverLocation } from "../services/locationService";
+import {
+  updateDriverAvailability,
+  getDriverAvailability,
+} from "../services/driverService";
 
 function DriverDashboard() {
   const { user } = useAuth();
@@ -41,6 +43,22 @@ function DriverDashboard() {
       setIsLoadingOrders(false);
     }
   };
+
+  useEffect(() => {
+  const loadAvailability = async () => {
+    try {
+      const availability = await getDriverAvailability(user.id);
+
+      setIsAvailable(availability === "AVAILABLE");
+    } catch (error) {
+      console.error("Failed to load driver availability:", error);
+    }
+  };
+
+  if (user?.id) {
+    loadAvailability();
+  }
+}, [user?.id]);
 
   useEffect(() => {
   if (!isAvailable) {

@@ -1,5 +1,6 @@
 package com.pulsedrop.order.kafka;
 
+import com.pulsedrop.order.event.DriverAssignedEvent;
 import com.pulsedrop.order.event.EventEnvelope;
 import com.pulsedrop.order.event.EventType;
 import com.pulsedrop.order.event.OrderCreatedEvent;
@@ -105,4 +106,22 @@ public void publishOrderCancelled(OrderCancelledEvent event) {
             envelope
     );
 }
+
+public void publishDriverAssigned(DriverAssignedEvent event) {
+
+    EventEnvelope<DriverAssignedEvent> envelope =
+            new EventEnvelope<>(
+                    UUID.randomUUID(),
+                    EventType.DRIVER_ASSIGNED,
+                    LocalDateTime.now(),
+                    event
+            );
+
+    kafkaTemplate.send(
+            ORDER_EVENTS_TOPIC,
+            event.getOrderId().toString(),
+            envelope
+    );
+}
+
 }

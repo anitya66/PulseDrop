@@ -8,5 +8,8 @@ import lombok.Getter;
 public class NotificationMessage {
 
     private String type;
+    private Long orderId;
+    private Long customerId;
+    private Long driverId;
     private String message;
 }

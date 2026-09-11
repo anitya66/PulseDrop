@@ -20,6 +20,8 @@ import com.pulsedrop.order.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.pulsedrop.order.event.DriverAssignedEvent;
 import com.pulsedrop.order.event.OrderCancelledEvent;
 import com.pulsedrop.order.event.OrderDeliveredEvent;
 
@@ -79,7 +81,7 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toResponse(savedOrder);
     }
 
-   @Override
+@Override
 @Transactional(readOnly = true)
 public OrderResponse getOrderById(Long orderId, Long userId) {
 
@@ -90,13 +92,21 @@ public OrderResponse getOrderById(Long orderId, Long userId) {
                     )
             );
 
-    if (!order.getCustomerId().equals(userId)) {
+    // Allow customer to access their own order
+    if (order.getCustomerId().equals(userId)) {
+        return orderMapper.toResponse(order);
+    }
+
+    // Allow assigned driver to access the order
+    if (order.getDriverId() != null
+            && order.getDriverId().equals(userId)) {
+        return orderMapper.toResponse(order);
+    }
+
+    // Everyone else is denied
     throw new UnauthorizedAccessException(
             "You are not authorized to access this order"
     );
-}
-
-    return orderMapper.toResponse(order);
 }
 
     @Override
@@ -297,21 +307,26 @@ public List<OrderStatusHistoryResponse> getOrderStatusHistory(
             .map(orderStatusHistoryMapper::toResponse)
             .toList();
 }
-    @Override
+  @Override
 public void assignDriver(Long orderId, Long driverId) {
 
     Order order = orderRepository.findById(orderId)
             .orElseThrow(() ->
-                    new ResourceNotFoundException(
-                            "Order not found with id: " + orderId
-                    )
-            );
+                    new ResourceNotFoundException("Order not found"));
 
     order.setDriverId(driverId);
     order.setStatus(OrderStatus.DRIVER_ASSIGNED);
     order.setUpdatedAt(LocalDateTime.now());
 
     orderRepository.save(order);
+
+    DriverAssignedEvent event =
+            new DriverAssignedEvent(
+                    orderId,
+                    driverId
+            );
+
+    orderEventProducer.publishDriverAssigned(event);
 
     System.out.println(
             "Driver " + driverId +
