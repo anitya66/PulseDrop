@@ -28,8 +28,18 @@ spring:
               predicates:
                 - Path=/api/locations/**
 
+            # Notification WebSocket
+            # Must be evaluated before the general /ws/** route
+            - id: notification-websocket
+              uri: ws://localhost:8085
+              order: -1
+              predicates:
+                - Path=/ws/notifications
+
+            # Location WebSocket
             - id: location-websocket
               uri: ws://localhost:8084
+              order: 0
               predicates:
                 - Path=/ws/**
 

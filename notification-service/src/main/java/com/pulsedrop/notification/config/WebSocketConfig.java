@@ -16,7 +16,6 @@ public class WebSocketConfig
             MessageBrokerRegistry registry) {
 
         registry.enableSimpleBroker("/topic");
-
         registry.setApplicationDestinationPrefixes("/app");
     }
 
@@ -24,7 +23,7 @@ public class WebSocketConfig
     public void registerStompEndpoints(
             StompEndpointRegistry registry) {
 
-        registry.addEndpoint("/ws")
+        registry.addEndpoint("/ws/notifications")
                 .setAllowedOriginPatterns("*");
     }
 }
