@@ -6,6 +6,7 @@ import {
   updateDriverAvailability,
   getDriverAvailability,
 } from "../services/driverService";
+import { updateDriverLocation } from "../services/locationService";
 
 function DriverDashboard() {
   const { user } = useAuth();

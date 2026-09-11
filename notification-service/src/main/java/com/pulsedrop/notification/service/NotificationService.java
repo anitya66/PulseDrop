@@ -76,10 +76,19 @@ public class NotificationService {
                     );
         };
 
-        messagingTemplate.convertAndSend(
-                "/topic/notifications",
-                notification
-        );
+        // Send to global notification topic
+messagingTemplate.convertAndSend(
+        "/topic/notifications",
+        notification
+);
+
+// Send to order-specific topic
+if (orderId != null) {
+    messagingTemplate.convertAndSend(
+            "/topic/orders/" + orderId,
+            notification
+    );
+}
 
         return notification;
     }

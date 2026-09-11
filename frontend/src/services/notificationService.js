@@ -65,3 +65,65 @@ export const disconnectNotifications = () => {
     );
   }
 };
+
+export const connectToOrderUpdates = (orderId, onUpdate) => {
+  const orderClient = new Client({
+    brokerURL: "ws://localhost:8080/ws/notifications",
+    reconnectDelay: 5000,
+
+    onConnect: () => {
+      console.log(
+        `Order WebSocket connected for order ${orderId}.`
+      );
+
+      orderClient.subscribe(
+        `/topic/orders/${orderId}`,
+        (message) => {
+          try {
+            const update = JSON.parse(message.body);
+
+            console.log(
+              "Order update received:",
+              update
+            );
+
+            onUpdate(update);
+          } catch (error) {
+            console.error(
+              "Failed to parse order update:",
+              error
+            );
+          }
+        }
+      );
+
+      console.log(
+        `Subscribed to /topic/orders/${orderId}`
+      );
+    },
+
+    onStompError: (frame) => {
+      console.error(
+        "Order WebSocket STOMP error:",
+        frame
+      );
+    },
+
+    onWebSocketError: (error) => {
+      console.error(
+        "Order WebSocket error:",
+        error
+      );
+    },
+  });
+
+  orderClient.activate();
+
+  return () => {
+    orderClient.deactivate();
+
+    console.log(
+      `Order WebSocket disconnected for order ${orderId}.`
+    );
+  };
+};

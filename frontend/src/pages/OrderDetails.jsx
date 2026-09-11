@@ -1,16 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+
 import {
   confirmPickup,
   getOrderById,
   getOrderHistory,
   updateOrderStatus,
 } from "../services/orderService";
+
 import { useAuth } from "../context/AuthContext";
+
 import {
   connectToDriverLocation,
   disconnectWebSocket,
 } from "../services/websocketService";
+
+import { connectToOrderUpdates } from "../services/notificationService";
+
 import LiveTrackingMap from "../components/LiveTrackingMap";
 
 function OrderDetails() {
@@ -83,6 +89,54 @@ function OrderDetails() {
       disconnectWebSocket();
     };
   }, [order?.driverId, isDriver]);
+
+  // Connect customer to real-time order status updates.
+  useEffect(() => {
+    if (!order?.id || isDriver) {
+      return;
+    }
+
+    console.log(
+      `Connecting to order ${order.id} status updates...`
+    );
+
+    const disconnectOrderUpdates = connectToOrderUpdates(
+      order.id,
+      (update) => {
+        console.log("Real-time order update:", update);
+
+        const statusMap = {
+          ORDER_CREATED: "PENDING",
+          DRIVER_ASSIGNED: "DRIVER_ASSIGNED",
+          ORDER_PICKED_UP: "PICKED_UP",
+          ORDER_IN_TRANSIT: "IN_TRANSIT",
+          ORDER_DELIVERED: "DELIVERED",
+          ORDER_CANCELLED: "CANCELLED",
+        };
+
+        const newStatus = statusMap[update.type];
+
+        if (!newStatus) {
+          return;
+        }
+
+        setOrder((currentOrder) => {
+          if (!currentOrder) {
+            return currentOrder;
+          }
+
+          return {
+            ...currentOrder,
+            status: newStatus,
+          };
+        });
+      }
+    );
+
+    return () => {
+      disconnectOrderUpdates();
+    };
+  }, [order?.id, isDriver]);
 
   const refreshOrder = async () => {
     const orderResult = await getOrderById(orderId);
