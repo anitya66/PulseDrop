@@ -111,6 +111,18 @@ public OrderResponse getOrderById(Long orderId, Long userId) {
                 .toList();
     }
 
+    @Override
+@Transactional(readOnly = true)
+public List<OrderResponse> getDriverOrders(Long driverId) {
+
+    List<Order> orders =
+            orderRepository.findByDriverId(driverId);
+
+    return orders.stream()
+            .map(orderMapper::toResponse)
+            .toList();
+}
+
    @Override
 @Transactional
 public OrderResponse updateOrderStatus(

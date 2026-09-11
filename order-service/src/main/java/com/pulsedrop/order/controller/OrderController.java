@@ -6,7 +6,7 @@ import com.pulsedrop.order.dto.request.UpdateOrderStatusRequest;
 import com.pulsedrop.order.dto.response.OrderResponse;
 import com.pulsedrop.order.dto.response.OrderStatusHistoryResponse;
 import com.pulsedrop.order.service.OrderService;
-
+import com.pulsedrop.order.exception.UnauthorizedAccessException;
 import jakarta.validation.Valid;
 
 import lombok.RequiredArgsConstructor;
@@ -72,6 +72,26 @@ public ResponseEntity<ApiResponse<OrderResponse>> getOrderById(
             ApiResponse.success(
                     "Orders fetched successfully",
                     orderService.getMyOrders(customerId)
+            )
+    );
+}
+
+// Get Driver Orders
+@GetMapping("/driver/my")
+public ResponseEntity<ApiResponse<List<OrderResponse>>> getDriverOrders(
+        @RequestHeader("X-User-Id") Long driverId,
+        @RequestHeader("X-User-Role") String role) {
+
+    if (!"DRIVER".equals(role)) {
+        throw new UnauthorizedAccessException(
+                "Only drivers can access driver orders"
+        );
+    }
+
+    return ResponseEntity.ok(
+            ApiResponse.success(
+                    "Driver orders fetched successfully",
+                    orderService.getDriverOrders(driverId)
             )
     );
 }

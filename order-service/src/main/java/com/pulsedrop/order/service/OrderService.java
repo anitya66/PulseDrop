@@ -5,7 +5,6 @@ import com.pulsedrop.order.dto.response.OrderResponse;
 import com.pulsedrop.order.dto.response.OrderStatusHistoryResponse;
 import com.pulsedrop.order.entity.OrderStatus;
 
-
 import java.util.List;
 
 public interface OrderService {
@@ -19,22 +18,25 @@ public interface OrderService {
 
     List<OrderResponse> getMyOrders(Long customerId);
 
+    List<OrderResponse> getDriverOrders(Long driverId);
+
     OrderResponse updateOrderStatus(
-        Long orderId,
-        OrderStatus newStatus,
-        Long userId,
-        String role
-);
+            Long orderId,
+            OrderStatus newStatus,
+            Long userId,
+            String role
+    );
 
     List<OrderStatusHistoryResponse> getOrderStatusHistory(
-        Long orderId,
-        Long userId);
+            Long orderId,
+            Long userId
+    );
 
     void assignDriver(Long orderId, Long driverId);
 
     void pickupOrder(
-        Long orderId,
-        Long userId,
-        String role
-);
+            Long orderId,
+            Long userId,
+            String role
+    );
 }
