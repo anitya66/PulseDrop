@@ -1,10 +1,15 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleRoute from "./components/RoleRoute";
+
 import { AuthProvider } from "./context/AuthContext";
+
+import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+
 import CustomerDashboard from "./pages/CustomerDashboard";
 import DriverDashboard from "./pages/DriverDashboard";
 import OrderDetails from "./pages/OrderDetails";
@@ -14,9 +19,16 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+
+          {/* Public Landing Page */}
+          <Route path="/" element={<LandingPage />} />
+
+          {/* Application Layout */}
           <Route element={<Layout />}>
+
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
+
             <Route path="/register" element={<Register />} />
 
             {/* Protected Routes */}
@@ -45,7 +57,9 @@ function App() {
               />
 
             </Route>
+
           </Route>
+
         </Routes>
       </AuthProvider>
     </BrowserRouter>
