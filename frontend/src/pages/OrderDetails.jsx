@@ -7,6 +7,11 @@ import {
   updateOrderStatus,
 } from "../services/orderService";
 import { useAuth } from "../context/AuthContext";
+import {
+  connectToDriverLocation,
+  disconnectWebSocket,
+} from "../services/websocketService";
+import LiveTrackingMap from "../components/LiveTrackingMap";
 
 function OrderDetails() {
   const { orderId } = useParams();
@@ -22,6 +27,8 @@ function OrderDetails() {
 
   const [error, setError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+
+  const [driverLocation, setDriverLocation] = useState(null);
 
   const isDriver = user?.role === "DRIVER";
 
@@ -57,6 +64,25 @@ function OrderDetails() {
   useEffect(() => {
     loadOrder();
   }, [orderId, user?.role]);
+
+  // Connect customer to the assigned driver's live location.
+  useEffect(() => {
+    if (!order?.driverId || isDriver) {
+      return;
+    }
+
+    console.log(
+      `Connecting to driver ${order.driverId} location updates...`
+    );
+
+    connectToDriverLocation(order.driverId, (location) => {
+      setDriverLocation(location);
+    });
+
+    return () => {
+      disconnectWebSocket();
+    };
+  }, [order?.driverId, isDriver]);
 
   const refreshOrder = async () => {
     const orderResult = await getOrderById(orderId);
@@ -224,7 +250,11 @@ function OrderDetails() {
       <div className="min-h-[calc(100vh-4rem)] bg-slate-950 px-6 py-10">
         <div className="mx-auto max-w-5xl">
           <Link
-            to={isDriver ? "/driver/dashboard" : "/customer/dashboard"}
+            to={
+              isDriver
+                ? "/driver/dashboard"
+                : "/customer/dashboard"
+            }
             className="text-sm text-slate-400 transition hover:text-white"
           >
             ← Back to deliveries
@@ -252,7 +282,11 @@ function OrderDetails() {
 
         {/* Back */}
         <Link
-          to={isDriver ? "/driver/dashboard" : "/customer/dashboard"}
+          to={
+            isDriver
+              ? "/driver/dashboard"
+              : "/customer/dashboard"
+          }
           className="text-sm text-slate-400 transition hover:text-white"
         >
           ← Back to deliveries
@@ -304,6 +338,7 @@ function OrderDetails() {
         {isDriver && driverActionLabel && (
           <div className="mt-6 rounded-3xl border border-blue-400/20 bg-blue-400/[0.05] p-6 sm:p-8">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-blue-300/70">
                   Driver action
@@ -353,6 +388,7 @@ function OrderDetails() {
             {/* Pickup */}
             <div className="flex gap-4">
               <div className="flex flex-col items-center">
+
                 <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-white">
                   A
                 </div>
@@ -370,13 +406,15 @@ function OrderDetails() {
                 </p>
 
                 <p className="mt-2 text-xs text-slate-500">
-                  {order.pickupLatitude}, {order.pickupLongitude}
+                  {order.pickupLatitude},{" "}
+                  {order.pickupLongitude}
                 </p>
               </div>
             </div>
 
             {/* Drop */}
             <div className="flex gap-4">
+
               <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-white">
                 B
               </div>
@@ -391,7 +429,8 @@ function OrderDetails() {
                 </p>
 
                 <p className="mt-2 text-xs text-slate-500">
-                  {order.dropLatitude}, {order.dropLongitude}
+                  {order.dropLatitude},{" "}
+                  {order.dropLongitude}
                 </p>
               </div>
             </div>
@@ -430,10 +469,45 @@ function OrderDetails() {
           </div>
         </div>
 
+        {/* Live Tracking */}
+        {!isDriver && order.driverId && (
+          <section className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] p-6 sm:p-8">
+            <div className="mb-6">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                Live tracking
+              </p>
+
+              <h2 className="mt-2 text-xl font-semibold text-white">
+                Driver location
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-400">
+                Track your driver in real time.
+              </p>
+            </div>
+
+            <LiveTrackingMap position={driverLocation} />
+
+            {driverLocation && (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs text-slate-500">
+                  Current coordinates
+                </p>
+
+                <p className="mt-2 text-sm text-slate-300">
+                  {driverLocation.latitude},{" "}
+                  {driverLocation.longitude}
+                </p>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Cancel Delivery - Customer only */}
         {!isDriver && order.status === "PENDING" && (
           <div className="mt-4 rounded-2xl border border-red-400/10 bg-red-400/[0.03] p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
               <div>
                 <p className="text-sm font-medium text-white">
                   Need to cancel this delivery?
@@ -496,6 +570,7 @@ function OrderDetails() {
 
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-2">
+
                         <span
                           className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusClasses(
                             item.status
@@ -523,6 +598,7 @@ function OrderDetails() {
             )}
           </section>
         )}
+
       </div>
     </div>
   );

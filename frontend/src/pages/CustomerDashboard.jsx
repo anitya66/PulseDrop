@@ -1,37 +1,105 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMyOrders } from "../services/orderService";
+import {
+  createOrder,
+  getMyOrders,
+} from "../services/orderService";
 
 function CustomerDashboard() {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [isCreating, setIsCreating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [createMessage, setCreateMessage] = useState("");
+
+  const [formData, setFormData] = useState({
+    pickupAddress: "Connaught Place, New Delhi",
+    pickupLatitude: "28.6315",
+    pickupLongitude: "77.2167",
+    dropAddress: "India Gate, New Delhi",
+    dropLatitude: "28.6129",
+    dropLongitude: "77.2295",
+  });
+
+  const loadOrders = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const result = await getMyOrders();
+
+      console.log("My orders:", result);
+
+      setOrders(result.data || []);
+    } catch (error) {
+      console.error("Failed to load orders:", error);
+
+      setError(
+        error.response?.data?.message ||
+          "Failed to load your orders."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        setIsLoading(true);
-        setError("");
-
-        const result = await getMyOrders();
-
-        console.log("My orders:", result);
-
-        setOrders(result.data || []);
-      } catch (error) {
-        console.error("Failed to load orders:", error);
-
-        setError(
-          error.response?.data?.message ||
-            "Failed to load your orders."
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadOrders();
   }, []);
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  const handleCreateOrder = async (event) => {
+    event.preventDefault();
+
+    try {
+      setIsSubmitting(true);
+      setCreateError("");
+      setCreateMessage("");
+
+      const payload = {
+        pickupAddress: formData.pickupAddress,
+        pickupLatitude: Number(formData.pickupLatitude),
+        pickupLongitude: Number(formData.pickupLongitude),
+        dropAddress: formData.dropAddress,
+        dropLatitude: Number(formData.dropLatitude),
+        dropLongitude: Number(formData.dropLongitude),
+      };
+
+      console.log("Creating order:", payload);
+
+      const result = await createOrder(payload);
+
+      console.log("Order created:", result);
+
+      setCreateMessage(
+        "Delivery created successfully."
+      );
+
+      setIsCreating(false);
+
+      await loadOrders();
+    } catch (error) {
+      console.error("Failed to create order:", error);
+
+      setCreateError(
+        error.response?.data?.message ||
+          "Failed to create the delivery."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const getStatusClasses = (status) => {
     switch (status) {
@@ -59,6 +127,10 @@ function CustomerDashboard() {
   };
 
   const formatStatus = (status) => {
+    if (!status) {
+      return "";
+    }
+
     return status
       .replaceAll("_", " ")
       .toLowerCase()
@@ -66,6 +138,10 @@ function CustomerDashboard() {
   };
 
   const formatDate = (date) => {
+    if (!date) {
+      return "—";
+    }
+
     return new Date(date).toLocaleString("en-IN", {
       dateStyle: "medium",
       timeStyle: "short",
@@ -77,19 +153,224 @@ function CustomerDashboard() {
       <div className="mx-auto max-w-7xl">
 
         {/* Header */}
-        <div className="mb-10">
-          <p className="mb-2 text-sm font-medium uppercase tracking-[0.18em] text-slate-500">
-            Customer dashboard
-          </p>
+        <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-2 text-sm font-medium uppercase tracking-[0.18em] text-slate-500">
+              Customer dashboard
+            </p>
 
-          <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            Your deliveries
-          </h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Your deliveries
+            </h1>
 
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-            Track your active deliveries and review your delivery history.
-          </p>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+              Track your active deliveries and review your delivery history.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsCreating(true);
+              setCreateError("");
+              setCreateMessage("");
+            }}
+            className="shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+          >
+            + Create Delivery
+          </button>
         </div>
+
+        {/* Success message */}
+        {createMessage && (
+          <div className="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-5 py-4">
+            <p className="text-sm text-emerald-300">
+              {createMessage}
+            </p>
+          </div>
+        )}
+
+        {/* Create Delivery Form */}
+        {isCreating && (
+          <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 sm:p-8">
+            <div className="mb-7">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                New delivery
+              </p>
+
+              <h2 className="mt-2 text-xl font-semibold text-white">
+                Create a delivery request
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-400">
+                Enter the pickup and drop locations for your delivery.
+              </p>
+            </div>
+
+            {createError && (
+              <div className="mb-6 rounded-2xl border border-red-400/20 bg-red-400/10 px-5 py-4">
+                <p className="text-sm text-red-300">
+                  {createError}
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateOrder}>
+              <div className="grid gap-8 lg:grid-cols-2">
+
+                {/* Pickup */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                    Pickup location
+                  </p>
+
+                  <div className="mt-5 space-y-4">
+
+                    <div>
+                      <label className="mb-2 block text-sm text-slate-400">
+                        Address
+                      </label>
+
+                      <input
+                        type="text"
+                        name="pickupAddress"
+                        value={formData.pickupAddress}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-white/30"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+
+                      <div>
+                        <label className="mb-2 block text-sm text-slate-400">
+                          Latitude
+                        </label>
+
+                        <input
+                          type="number"
+                          step="any"
+                          name="pickupLatitude"
+                          value={formData.pickupLatitude}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-white/30"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm text-slate-400">
+                          Longitude
+                        </label>
+
+                        <input
+                          type="number"
+                          step="any"
+                          name="pickupLongitude"
+                          value={formData.pickupLongitude}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-white/30"
+                        />
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+                {/* Drop */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                    Drop location
+                  </p>
+
+                  <div className="mt-5 space-y-4">
+
+                    <div>
+                      <label className="mb-2 block text-sm text-slate-400">
+                        Address
+                      </label>
+
+                      <input
+                        type="text"
+                        name="dropAddress"
+                        value={formData.dropAddress}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-white/30"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+
+                      <div>
+                        <label className="mb-2 block text-sm text-slate-400">
+                          Latitude
+                        </label>
+
+                        <input
+                          type="number"
+                          step="any"
+                          name="dropLatitude"
+                          value={formData.dropLatitude}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-white/30"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm text-slate-400">
+                          Longitude
+                        </label>
+
+                        <input
+                          type="number"
+                          step="any"
+                          name="dropLongitude"
+                          value={formData.dropLongitude}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-white/30"
+                        />
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Form actions */}
+              <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreating(false);
+                    setCreateError("");
+                  }}
+                  disabled={isSubmitting}
+                  className="rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSubmitting
+                    ? "Creating..."
+                    : "Create Delivery"}
+                </button>
+
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mb-8 grid gap-4 sm:grid-cols-3">
@@ -137,7 +418,7 @@ function CustomerDashboard() {
 
         {/* Orders */}
         <div>
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4">
             <div>
               <h2 className="text-lg font-semibold text-white">
                 Recent deliveries
