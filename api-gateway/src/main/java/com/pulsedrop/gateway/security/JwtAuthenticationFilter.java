@@ -32,10 +32,12 @@ public class JwtAuthenticationFilter implements WebFilter {
                 .getURI()
                 .getPath();
 
-        // Login and registration do not require JWT
-        if (path.startsWith("/api/auth/")) {
-            return chain.filter(exchange);
-        }
+        // Login, registration, and WebSocket handshake do not require JWT
+        if (path.startsWith("/api/auth/")
+        || path.equals("/ws")
+        || path.startsWith("/ws/")) {
+        return chain.filter(exchange);
+       } 
 
         String authorizationHeader = exchange.getRequest()
                 .getHeaders()

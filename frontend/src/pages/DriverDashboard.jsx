@@ -3,12 +3,16 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { updateDriverAvailability } from "../services/driverService";
 import { getDriverOrders } from "../services/orderService";
+import { updateDriverLocation } from "../services/locationService";
 
 function DriverDashboard() {
   const { user } = useAuth();
 
   const [isAvailable, setIsAvailable] = useState(false);
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
+
+  const [location, setLocation] = useState(null);
+  const [locationError, setLocationError] = useState("");
 
   const [orders, setOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
@@ -37,6 +41,60 @@ function DriverDashboard() {
       setIsLoadingOrders(false);
     }
   };
+
+  useEffect(() => {
+  if (!isAvailable) {
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    setLocationError("Geolocation is not supported by this browser.");
+    return;
+  }
+
+  setLocationError("");
+
+  const watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+
+      setLocation({
+        latitude,
+        longitude,
+      });
+
+      console.log("Driver location:", {
+        latitude,
+        longitude,
+      });
+
+      updateDriverLocation(user.id, latitude, longitude)
+        .then(() => {
+          console.log("Driver location sent to backend successfully.");
+        })
+        .catch((error) => {
+          console.error("Failed to send driver location:", error);
+        });
+    },
+    (error) => {
+      console.error("Failed to watch driver location:", error);
+
+      setLocationError(
+        "Unable to access your location. Please allow location permission."
+      );
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 10000,
+    }
+  );
+
+  return () => {
+    navigator.geolocation.clearWatch(watchId);
+    console.log("Driver location tracking stopped.");
+  };
+}, [isAvailable, user.id]);
 
   useEffect(() => {
     fetchDriverOrders();

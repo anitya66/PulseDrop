@@ -28,6 +28,11 @@ spring:
               predicates:
                 - Path=/api/locations/**
 
+            - id: location-websocket
+              uri: ws://localhost:8084
+              predicates:
+                - Path=/ws/**
+
 server:
   port: 8080
 

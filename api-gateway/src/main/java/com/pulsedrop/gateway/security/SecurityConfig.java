@@ -36,6 +36,7 @@ public class SecurityConfig {
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers("/api/auth/**").permitAll()
                         .pathMatchers("/actuator/health").permitAll()
+                        .pathMatchers("/ws/**").permitAll()
                         .anyExchange().authenticated()
                 )
 
