@@ -2,7 +2,7 @@
 
 > A real-time delivery tracking platform built with Java, Spring Boot, Microservices, Kafka, Redis, WebSocket/STOMP, MySQL, and React.
 
-PulseDrop is a practical microservices-based delivery tracking system inspired by real-world platforms such as Swiggy and Uber.
+PulseDrop is a practical microservices-based delivery tracking system inspired by real-world delivery and ride-tracking workflows.
 
 The project demonstrates how multiple backend services communicate through REST APIs and Kafka events while Redis handles real-time driver location and availability data. Customers can track delivery status and driver location in real time through a React frontend.
 
@@ -21,10 +21,10 @@ A customer can create a delivery order and track its progress.
 
 A driver can:
 
-- manage availability
-- share live location
-- view assigned orders
-- update delivery status
+- Manage availability
+- Share live location
+- View assigned orders
+- Update delivery status
 
 When an order is created, the system uses Kafka to trigger driver assignment. Redis GEO data is used to find a nearby available driver.
 
@@ -88,7 +88,7 @@ Real-time updates are delivered to the frontend using WebSocket/STOMP.
                          │       :8080         │
                          │                     │
                          │ JWT Validation      │
-                         │ Routing              │
+                         │ Routing             │
                          └──────────┬──────────┘
                                     │
              ┌──────────────────────┼──────────────────────┐
